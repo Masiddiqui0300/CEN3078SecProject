@@ -14,11 +14,15 @@
 
 int main() {
 
-    std::string inFileName, outFileName;
-    outFileName = "dummy.bmp";
+    std::string inFileName, outFileName, fileExtension;
+    fileExtension = ".bmp";
+    outFileName = "dummy";
 
-    std::cout << "\nEnter bitmap file name to read: ";
-    std::cin >> inFileName;
+    std::cout << "\nEnter bitmap file name to read (don't include .bmp extension): ";
+    std::getline(std::cin, inFileName);
+    inFileName.append(fileExtension);
+    std::cin.clear();
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
     // Make sure the file names were entered
     if (inFileName.length() && outFileName.length()) {
@@ -33,57 +37,75 @@ int main() {
 
             BMFile bmFile = BMFile(&inFile, &outFile);
 
-            int bytes = bmFile.load();
+            bool validChoice = false;
 
+            int bytes = bmFile.load();
             std::cout << "Loaded Bitmap \"" << inFileName << "\" (" << std::to_string(bytes) << " bytes)\n";
             std::cout << bmFile.toString();
 
-            // Menu Choice
-            char choice;
-            std::cout << "\nWould you like to: ";
-            std::cout << "\nEncrypt a message into a bitmap file [E]";
-            std::cout << "\nDecode a message from this bitmap file [D]";
-            std::cout << "\n>";
-            std::cin >> choice;
+            while (!validChoice) {
 
-            if (std::tolower(choice) == 'e') {              // Encrypt
+                // Menu Choice
+                std::string choice;
+                std::cout << "\nWould you like to: ";
+                std::cout << "\nEncrypt a message into a bitmap file [E]";
+                std::cout << "\nDecode a message from this bitmap file [D]";
+                std::cout << "\n>";
+                std::getline(std::cin, choice);
+                std::cin.clear();
+                std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+                choice = choice.at(0);
 
-                EncryptedBMFile* encryptedBMFile = reinterpret_cast<EncryptedBMFile*>(&bmFile);
+            
+                if (std::tolower(choice[0]) == 'e') {              // Encrypt
 
-                std::string encryptedFileName;
-                std::cout << "\nEnter new encrypted bitmap filename to write to: ";
-                std::cin >> encryptedFileName;
+                    EncryptedBMFile* encryptedBMFile = reinterpret_cast<EncryptedBMFile*>(&bmFile);
 
-                std::string messageToEncrypt;
-                std::cout << "\nEnter message to encrypt into " << encryptedFileName << ".\n" << ">";
-                std::cin >> messageToEncrypt;
+                    std::string encryptedFileName;
+                    std::cout << "\nEnter new encrypted bitmap filename to write to (don't include .bmp extension): ";
+                    std::getline(std::cin, encryptedFileName);
+                    encryptedFileName.append(fileExtension);
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                encryptedBMFile->encrypt(messageToEncrypt);
+                    std::string messageToEncrypt;
+                    std::cout << "\nEnter message to encrypt into " << encryptedFileName << ".\n" << ">";
+                    std::getline(std::cin, messageToEncrypt);
+                    std::cin.clear();
+                    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 
-                std::ofstream encryptFile;
-                encryptFile.open(encryptedFileName, std::ios::out | std::ios::trunc | std::ios::binary);
+                    encryptedBMFile->encrypt(messageToEncrypt);
 
-                encryptedBMFile->setWriter(&encryptFile);
-                encryptedBMFile->store();
+                    std::ofstream encryptFile;
+                    encryptFile.open(encryptedFileName, std::ios::out | std::ios::trunc | std::ios::binary);
 
-                std::cout << "\nBitmap file successfully encrypted and written out to " << encryptedFileName;
+                    encryptedBMFile->setWriter(&encryptFile);
+                    encryptedBMFile->store();
 
+                    std::cout << "\nBitmap file successfully encrypted and written out to " << encryptedFileName;
+                    validChoice = true;
+
+                }
+                else if (std::tolower(choice[0]) == 'd') {          // Decode
+
+                    EncryptedBMFile* decodedBMFile = reinterpret_cast<EncryptedBMFile*>(&bmFile);
+
+                    std::string decodedMessage = decodedBMFile->decode();
+                    std::cout << "\nDecoded message from " << inFileName << ": " << decodedMessage << '\n';
+                    validChoice = true;
+                }
+                else {
+                    std::cout << "\nInvalid option.\n";
+                }
             }
-            else if (std::tolower(choice) == 'd'){          // Decode
-
-                EncryptedBMFile* decodedBMFile = reinterpret_cast<EncryptedBMFile*>(&bmFile);
-
-                std::string decodedMessage = decodedBMFile->decode();
-                std::cout << "\nDecoded message from " << inFileName << ": " << decodedMessage << '\n';
-            }
-            else {
-                std::cout << "\nInvalid option.\n";
-            }
+            
         }
         else {
             std::cout << "Could not open input file: " << inFileName << std::endl;
         }
 
+        inFile.close();
+        outFile.close();
 
     } // filename lengths > 0
     else {
